@@ -178,6 +178,7 @@ defmodule Curl.Logger do
     |> format_timestamp(ts)
     |> format_metadata(md)
     |> format_default(level, service)
+    |> fixup_plug_logger_json()
     |> to_json
   end
 
@@ -198,6 +199,22 @@ defmodule Curl.Logger do
 
   defp format_default(base, level, service) do
     Map.merge(base, %{level: level, service: service})
+  end
+
+  defp fixup_plug_logger_json(event) do
+    with %{application: :plug_logger_json, module: Plug.LoggerJSON} <- event,
+         %{message: json_message} <- event,
+         {:ok, decoded} <- Poison.decode(json_message)
+    do
+      namespaced = decoded
+      |> Enum.map(fn {k, v} -> {"plug_" <> k, v} end)
+      |> Map.new()
+
+      Map.merge(event, namespaced)
+      |> Map.put(:message, "see plug_* fields")
+    else
+      _ -> event
+    end
   end
 
   defp formatted_timestamp({date, {hours, minutes, seconds, milliseconds}}) do
@@ -256,5 +273,10 @@ defmodule Curl.Logger do
     state
     |> await_io()
     |> flush()
+  end
+end
+defimpl Poison.Encoder, for: [PID, Port, Reference, Tuple, Function] do
+  def encode(value, options) do
+    Poison.Encoder.BitString.encode(inspect(value), options)
   end
 end
