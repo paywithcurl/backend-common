@@ -15,7 +15,7 @@ defmodule BackendCommon.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger, :poison]]
   end
 
   # Dependencies can be Hex packages:
@@ -29,7 +29,9 @@ defmodule BackendCommon.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:poison, ">= 1.3.0"},
+      {:poison, "~> 2.0"},
+      {:plug, "~> 1.3.3", only: :test},
+      {:plug_logger_json, github: "paywithcurl/plug_logger_json", only: :test},
     ]
   end
 end

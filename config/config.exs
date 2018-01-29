@@ -28,3 +28,12 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+
+config :logger,
+  backends: [Curl.Logger],
+  handle_otp_reports: true,
+  handle_sasl_reports: true,
+  level: :warn
+
+config :logger, Curl.Logger,
+  service: "backend-common"
