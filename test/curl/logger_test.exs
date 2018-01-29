@@ -1,5 +1,5 @@
 defmodule Curl.LoggerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false # only because we only reconfigure log level for one test
   import ExUnit.CaptureIO
   require Logger
 
@@ -64,5 +64,19 @@ defmodule Curl.LoggerTest do
     assert log["level"] == "error"
     assert log["service"] == "backend-common-test"
     assert log["message"] =~ "(RuntimeError) boom!"
+  end
+
+
+  test "plays well with the plug json logger" do
+    conn = %Plug.Conn{}
+    Logger.configure(level: :info)
+    assert json = capture_io(:user, fn ->
+      Plug.LoggerJSON.log(conn, :info, :erlang.timestamp())
+      Logger.flush()
+    end)
+
+    assert {:ok, map} = Poison.decode(json)
+    assert map["plug_method"] == "GET"
+    Logger.configure(level: :warn)
   end
 end
