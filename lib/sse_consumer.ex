@@ -61,7 +61,7 @@ defmodule SSEConsumer do
           %HTTPoison.AsyncStatus{id: ^conn_id, code: 200} ->
             receive do
               %HTTPoison.AsyncHeaders{id: ^conn_id, headers: _} ->
-                Logger.info("SSEConsumer connected to `#{state.source}`")
+                Logger.info("SSEConsumer connected to `#{url}`")
                 {:noreply, state}
               after
                 100 ->
@@ -140,7 +140,6 @@ defmodule SSEConsumer do
       # it shouldn't be a problem if this gets called more than once or on an invalid id
       disconnect_httpoison(conn_id)
     end
-    # TODO send the thing
     {:stop, :normal, state}
   end
 
