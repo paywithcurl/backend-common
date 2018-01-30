@@ -125,7 +125,7 @@ defmodule SSEConsumer do
 
   defp handle_events(events, state) do
     # TODO chunk the events
-    message = {:sse, events}
+    message = {:sse, self(), events}
     send(state.recipient, message)
   end
 
@@ -135,6 +135,7 @@ defmodule SSEConsumer do
 
   # TODO: add an optional argument of reason to be sent to the recipient
   defp disconnect_and_die(state = %State{conn_id: conn_id}) do
+    send(state.recipient, {:sse_disconnected, self(), :reason}) #TODO reason
     if conn_id != nil do
       # it shouldn't be a problem if this gets called more than once or on an invalid id
       disconnect_httpoison(conn_id)
