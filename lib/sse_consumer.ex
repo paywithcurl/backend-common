@@ -53,7 +53,7 @@ defmodule SSEConsumer do
   @impl GenServer
   def handle_info(:connect, state = %State{}) do
     %Request{method: method, url: url, body: body, headers: headers} = state.request
-    Logger.info("SSEConsumer connecting to TODO")
+    Logger.info("SSEConsumer connecting to `#{url}`")
     case HTTPoison.request(method, url, body, headers, stream_opts()) do
       {:ok, %{id: conn_id}} ->
         state = State.set_connection(state, conn_id)
