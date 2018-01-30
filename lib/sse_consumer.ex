@@ -9,13 +9,12 @@ defmodule SSEConsumer do
 
   defmodule State do
     @moduledoc false
-    @enforce_keys ~w(recipient tag request conn_id remaining_stream)a
+    @enforce_keys ~w(recipient request conn_id remaining_stream)a
     defstruct @enforce_keys
 
     def new(recipient, request = %SSEConsumer.Request{}) when is_pid(recipient) do
       %__MODULE__{
         recipient: recipient,
-        tag: new_tag(),
         request: request,
         remaining_stream: "",
         conn_id: nil
@@ -26,14 +25,6 @@ defmodule SSEConsumer do
     def set_connection(%__MODULE__{conn_id: current_conn_id} = state, new_conn_id)
     when new_conn_id != nil and is_nil(current_conn_id) do
       %{state | conn_id: new_conn_id}
-    end
-
-
-    defp new_tag(), do: random_string(12)
-
-
-    defp random_string(length) do
-      :crypto.strong_rand_bytes(length) |> Base.url_encode64 |> binary_part(0, length)
     end
   end
 
@@ -134,7 +125,7 @@ defmodule SSEConsumer do
 
   defp handle_events(events, state) do
     # TODO chunk the events
-    message = {:sse, state.tag, events}
+    message = {:sse, events}
     send(state.recipient, message)
   end
 
