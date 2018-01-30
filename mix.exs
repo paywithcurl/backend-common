@@ -31,6 +31,8 @@ defmodule BackendCommon.Mixfile do
     [
       {:poison, "~> 2.0"},
       {:plug, "~> 1.3.3", only: :test},
+      {:server_sent_event, ">= 0.3.0"},
+      {:httpoison, "~> 0.11.0"},
       {:plug_logger_json, github: "paywithcurl/plug_logger_json", only: :test},
     ]
   end
