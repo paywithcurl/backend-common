@@ -66,22 +66,22 @@ defmodule SSEConsumer do
               after
                 100 ->
                   Logger.warn("SSEConsumer timed out waiting for the headers")
-                  disconnect_and_die(state)
+                  disconnect_and_die(state, :headers_timeout)
             end
           %HTTPoison.AsyncStatus{id: ^conn_id, code: 400} ->
             receive do
               %HTTPoison.AsyncHeaders{headers: _} ->
                 Logger.warn("SSEConsumer received HTTP 400")
-                disconnect_and_die(state)
+                disconnect_and_die(state, :http_400)
             end
           after
             2_000 ->
               Logger.warn("SSEConsumer timed out waiting for a response")
-              disconnect_and_die(state)
+              disconnect_and_die(state, :timeout)
         end
       {:error, %HTTPoison.Error{reason: reason}} ->
         Logger.warn("SSEConsumer failed to connect. reason: `#{reason}`")
-        disconnect_and_die(state)
+        disconnect_and_die(state, {:httpoison, reason})
     end
   end
 
@@ -94,7 +94,7 @@ defmodule SSEConsumer do
   end
 
   def handle_info(%HTTPoison.AsyncEnd{}, %State{} = state) do
-    disconnect_and_die(state)
+    disconnect_and_die(state, :finished)
   end
 
   def handle_info(%HTTPoison.AsyncChunk{chunk: chunk}, %State{} = state) do
@@ -103,14 +103,15 @@ defmodule SSEConsumer do
       {:ok, {events, remaining_stream}} ->
         handle_events(events, state)
         {:noreply, %{state | remaining_stream: remaining_stream}}
-      {:error, _reason} ->
-        disconnect_and_die(state)
+      {:error, reason} ->
+        Logger.warn("SSE Consumer failed to parse chunk `#{chunk}` because of `#{reason}`")
+        disconnect_and_die(state, {:sse_parse, reason})
     end
   end
 
   def handle_info(%HTTPoison.Error{reason: reason}, %State{} = state) do
     Logger.warn("SSE Consumer streaming error; #{inspect(reason)}")
-    disconnect_and_die(state)
+    disconnect_and_die(state, {:httpoison, reason})
   end
 
   def handle_info(info, state) do
@@ -124,7 +125,6 @@ defmodule SSEConsumer do
   #===========================================================================
 
   defp handle_events(events, state) do
-    # TODO chunk the events
     message = {:sse, self(), events}
     send(state.recipient, message)
   end
@@ -133,9 +133,8 @@ defmodule SSEConsumer do
   defp stream_opts, do: [stream_to: self(), timeout: 50_000, recv_timeout: 50_000]
 
 
-  # TODO: add an optional argument of reason to be sent to the recipient
-  defp disconnect_and_die(state = %State{conn_id: conn_id}) do
-    send(state.recipient, {:sse_disconnected, self(), :reason}) #TODO reason
+  defp disconnect_and_die(state = %State{conn_id: conn_id}, reason) do
+    send(state.recipient, {:sse_disconnected, self(), reason})
     if conn_id != nil do
       # it shouldn't be a problem if this gets called more than once or on an invalid id
       disconnect_httpoison(conn_id)
