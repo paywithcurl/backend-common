@@ -29,11 +29,7 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-config :logger,
-  backends: [Curl.Logger],
-  handle_otp_reports: true,
-  handle_sasl_reports: true,
-  level: :warn
-
-config :logger, Curl.Logger,
-  service: "backend-common"
+config :logger, :console,
+  format: {Curl.Logger, :format},
+  colors: [enabled: false],
+  metadata: :all

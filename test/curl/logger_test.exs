@@ -4,36 +4,10 @@ defmodule Curl.LoggerTest do
   require Logger
 
   setup_all do
-    Logger.configure_backend(Curl.Logger, service: "backend-common-test")
-  end
-
-  setup do
-    on_exit(fn ->
-      :ok = Logger.configure_backend(Curl.Logger, service: "backend-common-test", device: :user)
-    end)
-  end
-
-  test "does not start when there is no user" do
-    :ok = Logger.remove_backend(Curl.Logger)
-    user = Process.whereis(:user)
-
-    try do
-      Process.unregister(:user)
-      assert :gen_event.add_handler(Logger, Curl.Logger, Curl.Logger) == {:error, :ignore}
-    after
-      Process.register(user, :user)
-    end
-  after
-    {:ok, _} = Logger.add_backend(Curl.Logger)
-  end
-
-  test "may use another device" do
-    Logger.configure_backend(Curl.Logger, device: :standard_error)
-
-    assert capture_io(:standard_error, fn ->
-             Logger.warn("hello")
-             Logger.flush()
-           end) =~ "hello"
+    conf = Application.get_env(:logger, :console)
+    conf = Keyword.put(conf, :service, "backend-common-test")
+    Application.put_env(:logger, :console, conf)
+    :ok
   end
 
   test "always JSON with timestamp, service and level" do
@@ -66,7 +40,6 @@ defmodule Curl.LoggerTest do
     assert log["message"] =~ "(RuntimeError) boom!"
   end
 
-
   test "plays well with the plug json logger" do
     conn = %Plug.Conn{}
     Logger.configure(level: :info)
@@ -76,7 +49,8 @@ defmodule Curl.LoggerTest do
     end)
 
     assert {:ok, map} = Poison.decode(json)
-    assert map["plug_method"] == "GET"
+    assert map["method"] == "GET"
+    assert map["_module"] == "Elixir.Plug.LoggerJSON"
     Logger.configure(level: :warn)
   end
 end
