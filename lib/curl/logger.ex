@@ -12,7 +12,7 @@ defmodule Curl.Logger do
       _ ->
         case Poison.encode(%{message: "could not format: #{inspect message}}", level: level, metadata: inspect(metadata)}) do
           {:ok, message} -> message
-          _ -> ""
+          _ -> "unexpected outcome"
         end
     end
 
@@ -36,7 +36,8 @@ defmodule Curl.Logger do
   end
 
   defp add_metadata(%{} = base, metadata) do
-    Map.merge(base, Enum.into(metadata, %{}))
+    metadata = for {key, val} <- metadata, into: %{}, do: {"_#{key}", val}
+    Map.merge(base, metadata)
   end
 
   defp add_level(%{} = base, level) do
