@@ -5,6 +5,8 @@ defmodule SSEConsumer do
   defmodule Request do
     @enforce_keys ~w(method url body headers)a
     defstruct @enforce_keys
+
+    @type t :: %__MODULE__{}
   end
 
   defmodule State do
@@ -32,8 +34,28 @@ defmodule SSEConsumer do
   # Public API
   #===========================================================================
 
+  @doc """
+  See `SSEConsumer.start_link/3`
+  """
   def stream_to(recipient, request, options), do: start_link(recipient, request, options)
 
+  @doc """
+  Starts the `SSEConsumer` and links it to the current process. The consumer
+  will perform the specified `request`, keep the connection open, and
+  send the `recipient` the already parsed server side events.
+
+  Once started, the `SSEConsumer` will send the `recipient` the following messages:
+
+  - `{:sse, own_pid, events}` where `events` is a list of `%ServerSentEvent{}`,
+  whenever it receives events from the stream
+
+  - `{:sse_disconnected, own_pid, reason}` when it gets disconnected. It will
+  only send this one once and terminate normally afterwards. It will will not
+  attemt to reconnect.
+  If the `reason` is anything but `:finished` it means the request didn't terminate
+  normally.
+  """
+  @spec start_link(pid(), SSEConsumer.Request.t, Keyword.t) :: {:ok, pid()}
   def start_link(recipient, request = %Request{}, options) do
     initial_state = State.new(recipient, request)
     GenServer.start_link(__MODULE__, initial_state, options)
