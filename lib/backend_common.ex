@@ -3,16 +3,13 @@ defmodule BackendCommon do
   Documentation for BackendCommon.
   """
 
-  @doc """
-  Hello world.
+  def start(_type, _args) do
+    children = [
+      {BackendCommon.VaultTokenRenewer, name: BackendCommon.VaultTokenRenewer}
+    ]
 
-  ## Examples
+    opts = [strategy: :one_for_one, name: BackendCommon.Supervisor]
+    Supervisor.start_link(children, opts)
 
-      iex> BackendCommon.hello
-      :world
-
-  """
-  def hello do
-    :world
   end
 end
