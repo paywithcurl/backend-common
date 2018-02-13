@@ -1,4 +1,4 @@
-defmodule BackendCommon.VaultTokenRenewer do
+defmodule BackendCommon.Vault do
   use GenServer
   require Logger
   @version "v1"

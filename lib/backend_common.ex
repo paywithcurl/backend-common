@@ -5,7 +5,7 @@ defmodule BackendCommon do
 
   def start(_type, _args) do
     children = [
-      {BackendCommon.VaultTokenRenewer, name: BackendCommon.VaultTokenRenewer}
+      {BackendCommon.Vault, name: BackendCommon.Vault}
     ]
 
     opts = [strategy: :one_for_one, name: BackendCommon.Supervisor]
