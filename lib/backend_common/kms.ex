@@ -9,7 +9,6 @@ defmodule BackendCommon.KMS do
       state = :crypto.stream_init(:aes_ctr,  :base64.decode(data_key), iv)
       {_state, plaintext} = :crypto.stream_decrypt(state, ciphertext)
       {:ok, decrypted} = Poison.decode(plaintext)
-      {:ok, decrypted}
     rescue
       _ ->
         {:error, "Could not decrypt #{inspect secret}"}
@@ -24,7 +23,7 @@ defmodule BackendCommon.KMS do
          state = :crypto.stream_init(:aes_ctr, :base64.decode(data_key), iv),
          {_state, ciphertext} = :crypto.stream_encrypt(state, to_string(plaintext))
     do
-      %{encrypted_data_key: encrypted_data_key, ciphertext: :base64.encode(iv <> ciphertext)}
+      {:ok, %{encrypted_data_key: encrypted_data_key, ciphertext: :base64.encode(iv <> ciphertext)}}
     else
       _ ->
         {:error, "Could not encrypt #{inspect secret} with key #{key_id}"}
