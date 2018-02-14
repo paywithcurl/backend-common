@@ -1,67 +1,40 @@
 defmodule BackendCommon.Vault do
-  use GenServer
   require Logger
   @version "v1"
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, %{}, opts)
-  end
-
-  def init(state) do
-    {:ok, Map.merge(state, %{url: url()})}
-  end
-
-  def auth(method, credentials) do
-    GenServer.call(__MODULE__, {:auth, method, credentials})
-  end
-
-  def token_renew(token) do
-    case GenServer.call(__MODULE__, {:tokenrenew, token}) do
-      :ok -> Logger.info("Token renewed")
-      {:error, error} -> Logger.error("Token renewing result: #{inspect error}")
+  def token_renew(renew_token, method, credentials) do
+    with {:reply, {:ok, :authenticated}, %{token: token, url: url}} <-
+            Vaultex.Auth.handle(method, credentials, %{url: url}),
+         {:ok, _} <- do_token_renew(url, renew_token, token)
+    do
+      Logger.info("Token renewed")
+    else
+      error ->
+        Logger.error("Token renewing result: #{inspect error}")
     end
   end
 
-  def token_renew(token, method, credentials) do
-    case token_renew(token) do
-      :ok -> :ok
-      {:ok, _} -> :ok
-      {:error, _} ->
-        with {:ok, :authenticated} <- auth(method, credentials) do
-          token_renew(token)
-        end
-    end
-  end
-
-  def handle_call({:auth, method, credentials}, _from, state) do
-    Vaultex.Auth.handle(method, credentials, state)
-  end
-
-  def handle_call({:tokenrenew, renew_token}, _from, %{token: token} = state) do
+  def do_token_renew(url, renew_token, token) do
     :post
-    |> request("#{state.url}auth/token/renew/#{renew_token}", %{}, [{"X-Vault-Token", token}])
-    |> handle_response(state)
+    |> request("#{url}auth/token/renew/#{renew_token}", %{}, [{"X-Vault-Token", token}])
+    |> handle_response(url)
   end
 
-  def handle_call(_, _from, state) do
-    {:reply, {:error, ["Not Authenticated"]}, state}
-  end
-
-  defp handle_response({:ok, response}, state) do
+  defp handle_response({:ok, response}, _url) do
     case response.status_code do
       204 ->
         :ok
       _ ->
         case response.body |> Poison.Parser.parse! do
-          %{"data" => data} -> {:reply, {:ok, data}, state}
-          %{"errors" => []} -> {:reply, {:error, ["Key not found"]}, state}
-          %{"errors" => messages} -> {:reply, {:error, messages}, state}
+          %{"data" => data} -> {:ok, data}
+          %{"errors" => []} -> {:error, ["Key not found"]}
+          %{"errors" => messages} -> {:error, messages}
         end
     end
   end
 
-  defp handle_response({_, %HTTPoison.Error{reason: reason}}, state) do
-      {:reply, {:error, ["Bad response from vault [#{state.url}]", "#{reason}"]}, state}
+  defp handle_response({_, %HTTPoison.Error{reason: reason}}, url) do
+      {:reply, {:error, ["Bad response from vault [#{url}]", "#{reason}"]}}
   end
 
   defp request(method, url, body, headers) do
@@ -104,4 +77,3 @@ defmodule BackendCommon.Vault do
     Application.get_env(:vaultex, :vault_addr) || System.get_env("VAULT_ADDR")
   end
 end
-
