@@ -4,7 +4,7 @@ defmodule BackendCommon.Vault do
 
   def token_renew(renew_token, method, credentials) do
     with {:reply, {:ok, :authenticated}, %{token: token, url: url}} <-
-            Vaultex.Auth.handle(method, credentials, %{url: url}),
+            Vaultex.Auth.handle(method, credentials, %{url: url()}),
          {:ok, _} <- do_token_renew(url, renew_token, token)
     do
       Logger.info("Token renewed")

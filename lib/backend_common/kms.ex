@@ -3,12 +3,11 @@ defmodule BackendCommon.KMS do
   def decrypt_map(%{ciphertext: ciphertext, encrypted_data_key: encrypted_data_key} = secret) do
     response = ExAws.KMS.decrypt(encrypted_data_key) |> ExAws.request
     try do
-      {:ok, %{"KeyId" => _, "Plaintext" => data_key}} =
-        ExAws.KMS.decrypt(encrypted_data_key) |> ExAws.request
+      {:ok, %{"KeyId" => _, "Plaintext" => data_key}} = response
       <<iv::binary-16, ciphertext::binary>> = :base64.decode(ciphertext)
       state = :crypto.stream_init(:aes_ctr,  :base64.decode(data_key), iv)
       {_state, plaintext} = :crypto.stream_decrypt(state, ciphertext)
-      {:ok, decrypted} = Poison.decode(plaintext)
+      {:ok, _decrypted} = Poison.decode(plaintext)
     rescue
       _ ->
         {:error, "Could not decrypt #{inspect secret}"}
