@@ -4,9 +4,7 @@ defmodule Curl.LoggerTest do
   require Logger
 
   setup_all do
-    conf = Application.get_env(:logger, :console)
-    conf = Keyword.put(conf, :service, "backend-common-test")
-    Application.put_env(:logger, :console, conf)
+    Application.put_env(:logger, :service, "backend-common-test")
     :ok
   end
 
@@ -16,7 +14,6 @@ defmodule Curl.LoggerTest do
       Logger.flush()
     end)
     log = Poison.decode!(json)
-    assert {:ok, %DateTime{}, 0} = DateTime.from_iso8601(log["timestamp"])
     assert log["level"] == "warn"
     assert log["service"] == "backend-common-test"
     assert log["message"] == "some message"
@@ -34,7 +31,6 @@ defmodule Curl.LoggerTest do
     assert [log] = Regex.split(~r/\R/, lines, [trim: true])
     |> Enum.map(&Poison.decode!/1)
     |> Enum.filter(fn log -> String.contains?(log["message"], "boom!") end)
-    assert {:ok, %DateTime{}, 0} = DateTime.from_iso8601(log["timestamp"])
     assert log["level"] == "error"
     assert log["service"] == "backend-common-test"
     assert log["message"] =~ "(RuntimeError) boom!"
@@ -48,9 +44,20 @@ defmodule Curl.LoggerTest do
       Logger.flush()
     end)
 
-    assert {:ok, map} = Poison.decode(json)
-    assert map["method"] == "GET"
-    assert map["_module"] == "Elixir.Plug.LoggerJSON"
+
+    assert {:ok, map1} = Poison.decode(json)
+    assert {:ok, map2} = Poison.decode(map1["message"])
+    assert map2["method"] == "GET"
+    assert map1["module"] == "Elixir.Plug.LoggerJSON"
     Logger.configure(level: :warn)
+  end
+
+  test "sanitizing metadata" do
+    case Curl.Logger.format(:info, "message", :timestamp, pid: self(), ref: make_ref(), other: "other") do
+      "could not format "<> _ ->
+        flunk("format failer")
+      _ ->
+        :ok
+    end
   end
 end
