@@ -6,7 +6,7 @@ defmodule Virtue do
   @doc """
   Run the passed function until it returns without raising an exception or remaining_retries are exhausted
   """
-  def wait_until_pass(fun, remaining_retries \\ 8, delay_ms \\ 1_000)
+  def wait_until_pass(fun, remaining_retries \\ 10, delay_ms \\ 200)
 
   def wait_until_pass(fun, 0, _delay_ms) do
     fun.()
