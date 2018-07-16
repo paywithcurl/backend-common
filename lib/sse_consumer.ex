@@ -76,15 +76,15 @@ defmodule SSEConsumer do
     Logger.info("SSEConsumer connecting to `#{url}`")
 
     case HTTPoison.request(method, url, body, headers, stream_opts()) do
-      {:ok, %{id: async_ref}} ->
+      {:ok, async_ref = %{id: async_ref_id}} ->
         state = State.set_connection(state, async_ref)
 
         receive do
-          %HTTPoison.AsyncStatus{id: ^async_ref, code: 200} ->
+          %HTTPoison.AsyncStatus{id: ^async_ref_id, code: 200} ->
             {:ok, _} = HTTPoison.stream_next(state.async_ref)
 
             receive do
-              %HTTPoison.AsyncHeaders{id: ^async_ref, headers: _} ->
+              %HTTPoison.AsyncHeaders{id: ^async_ref_id, headers: _} ->
                 {:ok, _} = HTTPoison.stream_next(state.async_ref)
                 Logger.info("SSEConsumer connected to `#{url}`")
                 {:noreply, state}
@@ -94,7 +94,7 @@ defmodule SSEConsumer do
                 disconnect_and_die(state, :headers_timeout)
             end
 
-          %HTTPoison.AsyncStatus{id: ^async_ref, code: 400} ->
+          %HTTPoison.AsyncStatus{id: ^async_ref_id, code: 400} ->
             {:ok, _} = HTTPoison.stream_next(state.async_ref)
 
             receive do
