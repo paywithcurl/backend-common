@@ -48,12 +48,12 @@ defmodule SSEConsumer do
   will perform the specified `request`, keep the connection open, and
   send the `recipient` the already parsed server side events.
 
-  Once started, the `SSEConsumer` will send the `recipient` the following messages:
+  Once started, the `SSEConsumer` will communicate with the `recipient`:
 
-  - `{:sse, own_pid, events}` where `events` is a list of `%ServerSentEvent{}`,
+  - `{:sse, own_pid, events}` `GenServer` `call` where `events` is a list of `%ServerSentEvent{}`,
   whenever it receives events from the stream
 
-  - `{:sse_disconnected, own_pid, reason}` when it gets disconnected. It will
+  - `{:sse_disconnected, own_pid, reason}` info message when it gets disconnected. It will
   only send this one once and terminate normally afterwards. It will will not
   attemt to reconnect.
   If the `reason` is anything but `:finished` it means the request didn't terminate
@@ -137,8 +137,8 @@ defmodule SSEConsumer do
 
     case ServerSentEvent.parse_all(chunk) do
       {:ok, {events, remaining_stream}} ->
-        handle_events(events, state)
         {:ok, _} = HTTPoison.stream_next(state.async_ref)
+        handle_events(events, state)
         {:noreply, %{state | remaining_stream: remaining_stream}}
 
       {:error, reason} ->
