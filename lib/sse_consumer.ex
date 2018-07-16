@@ -1,4 +1,9 @@
 defmodule SSEConsumer do
+  @doc """
+  NOTE: This consumer will only pull new parts of a request once the recipient has acknowledge processing them.
+  It does this by using a Gen.call to forward messages to the recipient.
+  If this is too slow an improvement would be to have some messages in a buffer that are ready to be forwarded.
+  """
   require Logger
   use GenServer
 
