@@ -1,5 +1,5 @@
 defmodule SSEConsumer do
-  @doc """
+  @moduledoc """
   A SSEConsumer process will run for the duration of a connection.
   If the connection is lost it will exit with status normal.
   It is up to the client that uses this module to manage a reconnect.
