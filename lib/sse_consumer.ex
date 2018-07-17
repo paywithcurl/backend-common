@@ -1,5 +1,9 @@
 defmodule SSEConsumer do
   @doc """
+  A SSEConsumer process will run for the duration of a connection.
+  If the connection is lost it will exit with status normal.
+  It is up to the client that uses this module to manage a reconnect.
+
   NOTE: This consumer will only pull new parts of a request once the recipient has acknowledge processing them.
   It does this by using a Gen.call to forward messages to the recipient.
   If this is too slow an improvement would be to have some messages in a buffer that are ready to be forwarded.
@@ -86,26 +90,39 @@ defmodule SSEConsumer do
 
         receive do
           %HTTPoison.AsyncStatus{id: ^async_ref_id, code: 200} ->
-            {:ok, _} = HTTPoison.stream_next(state.async_ref)
+            case HTTPoison.stream_next(state.async_ref) do
+              {:ok, _} ->
+                receive do
+                  %HTTPoison.AsyncHeaders{id: ^async_ref_id, headers: _} ->
+                    case HTTPoison.stream_next(state.async_ref) do
+                      {:ok, _} ->
+                        Logger.info("SSEConsumer connected to `#{url}`")
+                        {:noreply, state}
 
-            receive do
-              %HTTPoison.AsyncHeaders{id: ^async_ref_id, headers: _} ->
-                {:ok, _} = HTTPoison.stream_next(state.async_ref)
-                Logger.info("SSEConsumer connected to `#{url}`")
-                {:noreply, state}
-            after
-              100 ->
-                Logger.warn("SSEConsumer timed out waiting for the headers")
-                disconnect_and_die(state, :headers_timeout)
+                      {:error, %{reason: reason}} ->
+                        disconnect_and_die(state, reason)
+                    end
+                after
+                  100 ->
+                    Logger.warn("SSEConsumer timed out waiting for the headers")
+                    disconnect_and_die(state, :headers_timeout)
+                end
+
+              {:error, %{reason: reason}} ->
+                disconnect_and_die(state, reason)
             end
 
           %HTTPoison.AsyncStatus{id: ^async_ref_id, code: 400} ->
-            {:ok, _} = HTTPoison.stream_next(state.async_ref)
+            case HTTPoison.stream_next(state.async_ref) do
+              {:ok, _} ->
+                receive do
+                  %HTTPoison.AsyncHeaders{headers: _} ->
+                    Logger.warn("SSEConsumer received HTTP 400")
+                    disconnect_and_die(state, :http_400)
+                end
 
-            receive do
-              %HTTPoison.AsyncHeaders{headers: _} ->
-                Logger.warn("SSEConsumer received HTTP 400")
-                disconnect_and_die(state, :http_400)
+              {:error, %{reason: reason}} ->
+                disconnect_and_die(state, reason)
             end
         after
           2_000 ->
@@ -124,8 +141,13 @@ defmodule SSEConsumer do
   # ---------------------------------------------------------------------------
 
   def handle_info(%HTTPoison.AsyncChunk{chunk: ""}, %State{} = state) do
-    {:ok, _} = HTTPoison.stream_next(state.async_ref)
-    {:noreply, state}
+    case HTTPoison.stream_next(state.async_ref) do
+      {:ok, _} ->
+        {:noreply, state}
+
+      {:error, %{reason: reason}} ->
+        disconnect_and_die(state, reason)
+    end
   end
 
   def handle_info(%HTTPoison.AsyncEnd{}, %State{} = state) do
@@ -137,9 +159,14 @@ defmodule SSEConsumer do
 
     case ServerSentEvent.parse_all(chunk) do
       {:ok, {events, remaining_stream}} ->
-        {:ok, _} = HTTPoison.stream_next(state.async_ref)
-        handle_events(events, state)
-        {:noreply, %{state | remaining_stream: remaining_stream}}
+        case HTTPoison.stream_next(state.async_ref) do
+          {:ok, _} ->
+            handle_events(events, state)
+            {:noreply, %{state | remaining_stream: remaining_stream}}
+
+          {:error, %{reason: reason}} ->
+            disconnect_and_die(state, reason)
+        end
 
       {:error, reason} ->
         Logger.warn("SSE Consumer failed to parse chunk `#{chunk}` because of `#{reason}`")
