@@ -44,9 +44,9 @@ defmodule Curl.LoggerTest do
       Logger.flush()
     end)
 
-
     assert {:ok, map1} = Poison.decode(json)
-    assert {:ok, map2} = Poison.decode(map1["message"])
+
+    map2 = map1["message"]
     assert map2["method"] == "GET"
     assert map1["module"] == "Elixir.Plug.LoggerJSON"
     Logger.configure(level: :warn)
