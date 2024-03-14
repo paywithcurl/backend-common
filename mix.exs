@@ -4,7 +4,7 @@ defmodule BackendCommon.Mixfile do
   def project do
     [
       app: :backend_common,
-      version: "0.2.0",
+      version: "0.3.0",
       elixir: "~> 1.4",
       elixirc_options: [
         warnings_as_errors: true
