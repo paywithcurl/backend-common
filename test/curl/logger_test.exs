@@ -10,11 +10,12 @@ defmodule Curl.LoggerTest do
 
   test "always JSON with timestamp, service and level" do
     assert json = capture_io(:user, fn ->
-      Logger.warn("some message")
+      Logger.warning("some message")
       Logger.flush()
     end)
+
     log = Poison.decode!(json)
-    assert log["level"] == "warn"
+    assert log["level"] == "warning"
     assert log["service"] == "backend-common-test"
     assert log["message"] == "some message"
   end
@@ -48,8 +49,8 @@ defmodule Curl.LoggerTest do
     assert {:ok, map1} = Poison.decode(json)
     assert {:ok, map2} = Poison.decode(map1["message"])
     assert map2["method"] == "GET"
-    assert map1["module"] == "Elixir.Plug.LoggerJSON"
-    Logger.configure(level: :warn)
+    assert map1["mfa"] == ["Elixir.Plug.LoggerJSON", "log", 3]
+    Logger.configure(level: :warning)
   end
 
   test "sanitizing metadata" do
