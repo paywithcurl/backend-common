@@ -1,5 +1,6 @@
 defmodule BackendCommon.KMS do
 
+  def decrypt_map(_), do: raise "need to be fixed"
   def decrypt_map(%{ciphertext: ciphertext, encrypted_data_key: encrypted_data_key} = secret) do
     response = ExAws.KMS.decrypt(encrypted_data_key) |> ExAws.request
     try do
@@ -14,6 +15,7 @@ defmodule BackendCommon.KMS do
     end
   end
 
+  def encrypt_map(_,_), do: raise "need to be fixed"
   def encrypt_map(%{} = secret, key_id) when is_binary(key_id) do
     with {:ok, plaintext} <- Poison.encode(secret),
          {:ok, %{"CiphertextBlob" => encrypted_data_key, "KeyId" => _, "Plaintext" => data_key}} <-
