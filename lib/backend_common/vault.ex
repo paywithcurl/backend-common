@@ -4,13 +4,12 @@ defmodule BackendCommon.Vault do
 
   def token_renew(renew_token, method, credentials) do
     with {:reply, {:ok, :authenticated}, %{token: token, url: url}} <-
-            Vaultex.Auth.handle(method, credentials, %{url: url()}),
-         {:ok, _} <- do_token_renew(url, renew_token, token)
-    do
+           Vaultex.Auth.handle(method, credentials, %{url: url()}),
+         {:ok, _} <- do_token_renew(url, renew_token, token) do
       Logger.info("Token renewed")
     else
       error ->
-        Logger.error("Token renewing result: #{inspect error}")
+        Logger.error("Token renewing result: #{inspect(error)}")
     end
   end
 
@@ -24,8 +23,9 @@ defmodule BackendCommon.Vault do
     case response.status_code do
       204 ->
         :ok
+
       _ ->
-        case response.body |> Poison.Parser.parse! do
+        case response.body |> Poison.Parser.parse!() do
           %{"data" => data} -> {:ok, data}
           %{"errors" => []} -> {:error, ["Key not found"]}
           %{"errors" => messages} -> {:error, messages}
@@ -34,7 +34,7 @@ defmodule BackendCommon.Vault do
   end
 
   defp handle_response({_, %HTTPoison.Error{reason: reason}}, url) do
-      {:reply, {:error, ["Bad response from vault [#{url}]", "#{reason}"]}}
+    {:reply, {:error, ["Bad response from vault [#{url}]", "#{reason}"]}}
   end
 
   defp request(method, url, body, headers) do
@@ -58,7 +58,7 @@ defmodule BackendCommon.Vault do
   end
 
   defp parsed_vault_addr do
-    get_env(:vault_addr) |> to_string |> URI.parse
+    get_env(:vault_addr) |> to_string |> URI.parse()
   end
 
   defp get_env(:host) do
@@ -66,11 +66,11 @@ defmodule BackendCommon.Vault do
   end
 
   defp get_env(:port) do
-      System.get_env("VAULT_PORT") || Application.get_env(:vaultex, :port) || 8200
+    System.get_env("VAULT_PORT") || Application.get_env(:vaultex, :port) || 8200
   end
 
   defp get_env(:scheme) do
-      System.get_env("VAULT_SCHEME") || Application.get_env(:vaultex, :scheme) || "http"
+    System.get_env("VAULT_SCHEME") || Application.get_env(:vaultex, :scheme) || "http"
   end
 
   defp get_env(:vault_addr) do
